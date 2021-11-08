@@ -24,10 +24,6 @@ logInUser = async (req, res) => {
                 .status(400)
                 .json({ errorMessage: "Please enter all required fields." });
         }
-        const saltRounds = 10;
-        const salt = await bcrypt.genSalt(saltRounds);
-        const passwordHash = await bcrypt.hash(password, salt);
-
         const existingUser = await User.findOne({ email: email });
         if (!existingUser) {
             return res
@@ -36,7 +32,8 @@ logInUser = async (req, res) => {
                     errorMessage: "No account with this email address was found."
                 })
         }
-        if(!bcrypt.compare(passwordHash, existingUser.passwordHash)){
+
+        if(!(await bcrypt.compare(password, existingUser.passwordHash))){
             return res
             .status(400)
             .json({
