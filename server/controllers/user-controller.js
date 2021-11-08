@@ -16,6 +16,56 @@ getLoggedIn = async (req, res) => {
     })
 }
 
+logInUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if(!email || !password){
+            return res
+                .status(400)
+                .json({ errorMessage: "Please enter all required fields." });
+        }
+        const saltRounds = 10;
+        const salt = await bcrypt.genSalt(saltRounds);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        const existingUser = await User.findOne({ email: email });
+        if (!existingUser) {
+            return res
+                .status(400)
+                .json({
+                    errorMessage: "No account with this email address was found."
+                })
+        }
+        if(!bcrypt.compare(passwordHash, existingUser.passwordHash)){
+            return res
+            .status(400)
+            .json({
+                errorMessage: "Email and password do not match."
+            })
+        }
+
+        // LOGIN THE USER
+        const token = auth.signToken(existingUser);
+
+        await res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none"
+        }).status(200).json({
+            success: true,
+            user: {
+                firstName: existingUser.firstName,
+                lastName: existingUser.lastName,
+                email: existingUser.email
+            }
+        }).send();
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send();
+    }
+}
+
 registerUser = async (req, res) => {
     try {
         const { firstName, lastName, email, password, passwordVerify } = req.body;
@@ -80,5 +130,6 @@ registerUser = async (req, res) => {
 
 module.exports = {
     getLoggedIn,
-    registerUser
+    registerUser,
+    logInUser
 }
